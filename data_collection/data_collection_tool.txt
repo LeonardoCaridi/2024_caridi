@@ -1,0 +1,6 @@
+Link del tool per data collection:
+
+https://arctic-shift.photon-reddit.com/download-tool
+
+Autore: ArthurHeitmann 
+GitHub: https://github.com/ArthurHeitmann/arctic_shift.git
