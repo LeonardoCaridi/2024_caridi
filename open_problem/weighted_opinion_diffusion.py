@@ -2,15 +2,19 @@ import networkx as nx
 import random
 
 class WeightedOpinionDiffusion:
-    def __init__(self, graph, epsilon=0.5, bias=1.0):
+    def __init__(self, graph, epsilon=0.5, bias=0):
         """
         Inizializza il modello di diffusione delle opinioni.
-        
-        :param graph: Il grafo su cui eseguire la simulazione.
-        :param epsilon: Parametro che indica la threshold che la distanza pesata di opinioni 
-                        non deve superare per aggiornare la sua opinione (open mindness).
-        :param bias: Bias, all'aumentare del valore, aumenta la probabilità che due opinioni vicine interagiscono 
-                     e diminuisce la probabilità che due opinioni lontane interagiscono.
+
+        Parametri:
+        - graph (networkx.Graph): Il grafo su cui eseguire la simulazione.
+        - epsilon (float): Parametro che indica la threshold che la distanza pesata di opinioni 
+                           non deve superare per aggiornare la sua opinione (open mindness).
+                           Valore in [0,1], default: 0.5
+        - bias (float): rappresenta il bias del modello; all'aumentare del valore, 
+                        aumenta la probabilità che due opinioni vicine interagiscono 
+                        e diminuisce la probabilità di interazione tra due opinioni lontane.
+                        Valore in [0,100], default: 0
         """
         if epsilon < 0 or epsilon > 1: raise ValueError("Il parametro epsilon deve essere un valore compreso in [0,1]")
         if bias < 0 or bias > 100: raise ValueError("Il parametro bias deve essere un valore compreso in [0,100]")
@@ -22,10 +26,11 @@ class WeightedOpinionDiffusion:
         """
         Calcola la distanza tra le opinioni tenendo conto del peso dell'arco.
         Il peso dell'arco diminuisce la distanza tra opinioni.
-        
-        :param opinion_i: Opinione del nodo i.
-        :param opinion_j: Opinione del nodo j.
-        :param weight_ji: Peso dell'arco j -> i (arco entrante in i)
+
+        Parametri:
+        - opinion_i (float): Opinione del nodo i.
+        - opinion_j (float): Opinione del nodo j.
+        - weight_ji (int) Peso dell'arco j -> i (arco entrante in i)
         :return: Valore di compatibilità tra 0 e 1.
         """
         return abs(opinion_i - opinion_j)/weight_ji
