@@ -2,7 +2,7 @@ import networkx as nx
 import random
 
 class WeightedOpinionDiffusion:
-    def __init__(self, graph, epsilon=0.5, bias=0):
+    def __init__(self, graph, epsilon=0.5, bias=0, reduced_weight=True):
         """
         Inizializza il modello di diffusione delle opinioni.
 
@@ -10,17 +10,31 @@ class WeightedOpinionDiffusion:
         - graph (networkx.Graph): Il grafo su cui eseguire la simulazione.
         - epsilon (float): Parametro che indica la threshold che la distanza pesata di opinioni 
                            non deve superare per aggiornare la sua opinione (open mindness).
-                           Valore in [0,1], default: 0.5
+                           Valore in [0,1] (default: 0.5)
         - bias (float): rappresenta il bias del modello; all'aumentare del valore, 
                         aumenta la probabilità che due opinioni vicine interagiscono 
                         e diminuisce la probabilità di interazione tra due opinioni lontane.
-                        Valore in [0,100], default: 0
+                        Valore in [0,100] (default: 0)
+        - reduced_weight (bool): utilizza una versione ridotta dei pesi in modo da avere una minore influenza
+                                 nella scelta e nel calcolo dell'opinione (default: True)
         """
         if epsilon < 0 or epsilon > 1: raise ValueError("Il parametro epsilon deve essere un valore compreso in [0,1]")
         if bias < 0 or bias > 100: raise ValueError("Il parametro bias deve essere un valore compreso in [0,100]")
         self.graph = graph
         self.epsilon = epsilon
         self.bias = bias
+        self.reduced_weight = reduced_weight
+    
+    def reduced_weight_function(self, weight_ji):
+        """
+        Diminuisce l'influenza del peso:
+        w_ji=1 => reduced(w_ji)=1,   w_ji=2 => reduced(w_ji)=1.1,   w_ji=3 => reduced(w_ji)=1.2, ...
+        
+        Parametri:
+        - weight_ji (int) Peso dell'arco j -> i, il valore deve essere positivo
+        """
+        if weight_ji < 0: raise ValueError("Il valore del peso di un arco deve essere positivo")
+        return (1 + (weight_ji - 1)/10) 
     
     def weighted_distance(self, opinion_i, opinion_j, weight_ji):
         """
@@ -33,8 +47,11 @@ class WeightedOpinionDiffusion:
         - weight_ji (int) Peso dell'arco j -> i (arco entrante in i)
         :return: Valore di compatibilità tra 0 e 1.
         """
-        return abs(opinion_i - opinion_j)/weight_ji
-    
+        if self.reduced_weight:
+            return abs(opinion_i - opinion_j)/self.reduced_weight_function(weight_ji)
+        else:
+            return abs(opinion_i - opinion_j)/weight_ji
+         
     def iteration(self):
         """
         Esegue un'iterazione della diffusione delle opinioni sul grafo.
@@ -87,7 +104,9 @@ class WeightedOpinionDiffusion:
                 dist = self.weighted_distance(current_opinion, neighbor_opinion, edge_weight)
                 
                 if dist <= self.epsilon: 
-                    new_opinion = (edge_weight * neighbor_opinion + current_opinion) / (edge_weight + 1)           
+                    if self.reduced_weight: weight = self.reduced_weight_function(edge_weight)
+                    else: weight = edge_weight
+                    new_opinion = (weight * neighbor_opinion + current_opinion) / (weight + 1)           
                 else: 
                     new_opinion = current_opinion
             else:
@@ -109,7 +128,7 @@ graph.add_edges_from([(0, 1, {"weight": 0.5}), (1, 2, {"weight": 0.7}), (2, 3, {
 for node in graph.nodes():
     graph.nodes[node]["opinion"] = random.uniform(0, 1)
 
-model = WeightedOpinionDiffusion(graph, epsilon=0.5, bias = 1)
+model = WeightedOpinionDiffusion(graph, epsilon=0.5, bias = 1, reduced_weight=True)
 
 # Esegue alcune iterazioni del modello
 for _ in range(10):

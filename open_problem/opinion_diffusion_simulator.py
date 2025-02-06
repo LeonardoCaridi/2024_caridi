@@ -3,6 +3,7 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 import random
+from copy import deepcopy
 from tqdm import tqdm
 from weighted_opinion_diffusion import WeightedOpinionDiffusion
 
@@ -15,12 +16,14 @@ class OpinionDiffusionSimulator:
     - iterations (int): Numero di iterazioni della simulazione (default: 100).
     - epsilon (float): Parametro di tolleranza per l'aggiornamento delle opinioni (default: 0.5).
     - bias (float): Bias nel processo di aggiornamento delle opinioni (default: 0).
+    - reduced_weight (bool): Riduce il valore dei pesi degli archi (default: True)
     - random_opinion (bool): Se True, inizializza le opinioni dei nodi casualmente (default: False).
     """
-    def __init__(self, graph, iterations=100, epsilon=0.5, bias=0, random_opinion=False):
+    def __init__(self, graph, iterations=100, epsilon=0.5, bias=0, reduced_weight=True, random_opinion=False):
         self.iterations = iterations
         self.epsilon = epsilon
         self.bias = bias
+        self.reduced_weight = reduced_weight
         self.graph = graph.copy() # Crea una copia per non sovrascirvere i valori di opinion
         self.nodes = list(self.graph.nodes())
         self.num_nodes = len(self.nodes)
@@ -34,7 +37,11 @@ class OpinionDiffusionSimulator:
         else:
             self.random_opinion = random_opinion
         
-        self.model = WeightedOpinionDiffusion(self.graph, epsilon=self.epsilon, bias=self.bias)
+        self.model = WeightedOpinionDiffusion(self.graph, 
+                                              epsilon=self.epsilon, 
+                                              bias=self.bias, 
+                                              reduced_weight=self.reduced_weight
+                                             )
         self.initialize_opinions()
     
     def initialize_opinions(self):
@@ -84,7 +91,7 @@ class OpinionDiffusionSimulator:
         if save: plt.savefig(os.path.join("plots", title))
         if ax is None: plt.show()
     
-    def plot_opinion_diffusion(self, title="Diffusione opinioni", ax=None, legend=False, save=False):
+    def plot_opinion_diffusion(self, title="Diffusione opinioni", ax=None, save=False):
         """Grafico dell'evoluzione delle opinioni nel tempo."""
         if ax is None:
             fig, ax = plt.subplots()
@@ -94,21 +101,28 @@ class OpinionDiffusionSimulator:
         ax.axhline(y=self.proTrump_init, color='r', linestyle='--', alpha=0.7)
         ax.axhline(y=self.neutral_init, color='grey', linestyle='--', alpha=0.7)
         
+        # Creazione di copie delle liste per evitare modifiche globali
+        proBiden_copy = deepcopy(self.proBiden)
+        proTrump_copy = deepcopy(self.proTrump)
+        neutral_copy = deepcopy(self.neutral)
+    
         # Il modello Weighted Opinion Diffusion restituisce i valori dalla prima iterazione in poi,
         # i valori iniziali vanno inseriti manualmente 
-        self.proBiden.insert(0,self.proBiden_init)
-        self.proTrump.insert(0,self.proTrump_init)
-        self.neutral.insert(0,self.neutral_init)
-        ax.plot(range(self.iterations+1), self.proBiden, color='b', label='pro-Biden')
-        ax.plot(range(self.iterations+1), self.proTrump, color='r', label='pro-Trump')
-        ax.plot(range(self.iterations+1), self.neutral, color='grey', label='neutral')
+        proBiden_copy.insert(0, self.proBiden_init)
+        proTrump_copy.insert(0, self.proTrump_init)
+        neutral_copy.insert(0, self.neutral_init)
+
+        ax.plot(range(self.iterations+1), proBiden_copy, color='b', label='pro-Biden')
+        ax.plot(range(self.iterations+1), proTrump_copy, color='r', label='pro-Trump')
+        ax.plot(range(self.iterations+1), neutral_copy, color='grey', label='neutral')
         
         ax.set_xlabel("Iterazioni")
         ax.set_ylabel("Numero di utenti")
         ax.set_title(title)
-        if legend: ax.legend()
-        if save: plt.savefig(os.path.join("plots", title))
-        if ax is None: plt.show()
+        if ax is None: 
+            ax.legend()
+            if save: plt.savefig(os.path.join("plots", title))
+            plt.show()
     
     def plot_opinion_evolution(self, title="Evoluzione opinioni nel tempo", ax=None, save=False):
         """Grafico delle opinioni dei singoli utenti nel tempo."""
@@ -133,8 +147,16 @@ class OpinionDiffusionSimulator:
             
 
 # Esempio di utilizzo:
-# simulator = OpinionDiffusionSimulator(G, iterations=100, epsilon=0.5, bias=1, random_opinion=False)
-# simulator.run_simulation()
-# simulator.plot_opinion_distribution()
-# simulator.plot_opinion_diffusion()
-# simulator.plot_opinion_evolution()
+"""
+simulator = OpinionDiffusionSimulator(G, 
+                                      iterations=100, 
+                                      epsilon=0.5, 
+                                      bias=1, 
+                                      reduced_weight=True, 
+                                      random_opinion=False
+                                     )
+simulator.run_simulation()
+simulator.plot_opinion_distribution()
+simulator.plot_opinion_diffusion()
+simulator.plot_opinion_evolution()
+"""
