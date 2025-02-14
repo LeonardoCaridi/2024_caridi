@@ -33,7 +33,7 @@ class WeightedOpinionDiffusion:
         Parametri:
         - weight_ji (int) Peso dell'arco j -> i, il valore deve essere positivo
         """
-        if weight_ji < 0: raise ValueError("Il valore del peso di un arco deve essere positivo")
+        if weight_ji < 1: raise ValueError("Il valore del peso di un arco deve essere maggiore o uguale ad 1")
         return (1 + (weight_ji - 1)/10) 
     
     def weighted_distance(self, opinion_i, opinion_j, weight_ji):
@@ -116,22 +116,3 @@ class WeightedOpinionDiffusion:
             new_opinions[node] = new_opinion
         
         return new_opinions
-
-
-# Esempio di utilizzo
-"""
-graph = nx.DiGraph()
-graph.add_nodes_from([0, 1, 2, 3])
-graph.add_edges_from([(0, 1, {"weight": 0.5}), (1, 2, {"weight": 0.7}), (2, 3, {"weight": 0.9})])
-
-# Inizializza le opinioni iniziali per i nodi
-for node in graph.nodes():
-    graph.nodes[node]["opinion"] = random.uniform(0, 1)
-
-model = WeightedOpinionDiffusion(graph, epsilon=0.5, bias = 1, reduced_weight=True)
-
-# Esegue alcune iterazioni del modello
-for _ in range(10):
-    new_opinions = model.iteration()
-    print(new_opinions)
-"""

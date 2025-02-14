@@ -13,8 +13,9 @@ class CommunityEvolutionAnalysis:
     """
     def __init__(self, snapshot_graphs, threshold_percentile=75):
         """
-        :param snapshot_graphs: lista di grafi (uno per snapshot)
-        :param threshold_percentile: percentile usato per filtrare i matching (default 75)
+        Parametri:
+        - snapshot_graphs (list of networkx.Graph): lista di grafi (uno per snapshot)
+        - threshold_percentile (int) : percentile usato per filtrare i matching (default 75)
         """
         self.snapshot_graphs = snapshot_graphs
         self.threshold_percentile = threshold_percentile
@@ -30,14 +31,16 @@ class CommunityEvolutionAnalysis:
             # Algoritmo di clustering (ad es. Louvain, può essere modificato)
             communities = algorithms.louvain(graph)
             self.tc.add_clustering(communities, t)
-        #print("Clusterizzazioni calcolate per ogni snapshot.")
 
     @staticmethod
     def jaccard_similarity(comm1, comm2):
         """
         Calcola la similarità di Jaccard tra due comunità.
-        :param comm1: iterabile di elementi della comunità 1
-        :param comm2: iterabile di elementi della comunità 2
+
+        Parametri:
+        - comm1: iterabile di elementi della comunità 1
+        - comm2: iterabile di elementi della comunità 2
+        
         :return: valore di similarità
         """
         set1, set2 = set(comm1), set(comm2)
@@ -73,11 +76,11 @@ class CommunityEvolutionAnalysis:
 
         self.matches = matches
         self.matches_array = np.array(matches)
-        #print("Matching calcolati tra snapshot consecutivi.")
 
     def filter_matches_by_threshold(self):
         """
         Filtra i matching utilizzando il percentile specificato sui punteggi Jaccard.
+        
         :return: valore della soglia usata
         """
         if self.matches is None:
@@ -110,8 +113,10 @@ class CommunityEvolutionAnalysis:
         Costruisce un grafo evolutivo direzionale a partire dai matching.
         Per ogni nodo (comunità) viene calcolato l'attributo 'mean_opinion'
         in base all'opinione media dei nodi della comunità corrispondente.
+
+        Parametri:
+        - matches_array: array numpy di matching (ogni riga: (start, end, peso))
         
-        :param matches_array: array numpy di matching (ogni riga: (start, end, peso))
         :return: grafo evolutivo (NetworkX DiGraph)
         """
         G = nx.DiGraph()
@@ -122,13 +127,12 @@ class CommunityEvolutionAnalysis:
 
         # Per ogni comunità nel grafo, calcola e assegna l'attributo "mean_opinion"
         for community in list(G.nodes):
-            snapshot_number = int(community.split('_')[0])
-            # Si assume che tc.get_clustering_at(t) restituisca un oggetto con attributo named_communities
+            snapshot_number = int(community.split('_')[0]) 
             clustering = self.tc.get_clustering_at(snapshot_number)
-            # Recupera i nodi della comunità corrente; si assume che la chiave sia lo stesso nome usato
+            # Estrae i nodi appartenenti alla community, se non ci sono ritorna una lista vuota
             community_nodes = clustering.named_communities.get(community, [])
-            if not community_nodes:
-                mean_opinion = 0
+            if not community_nodes: # se la lista è vuota l'opinione è 0.5
+                mean_opinion = 0.5
             else:
                 opinions = [self.snapshot_graphs[snapshot_number].nodes[n]["opinion"]
                             for n in community_nodes]
@@ -174,62 +178,6 @@ class CommunityEvolutionAnalysis:
             # Salva la figura nella cartella 'plots' se esiste (altrimenti crea la cartella)
             os.makedirs('plots', exist_ok=True)
             plt.savefig(os.path.join('plots', 'Evoluzione_community.png'))
-        plt.show()
-
-    def analyze_community_evolution(self):
-        """
-        Analizza l'evoluzione delle comunità in termini di categoria di opinion:
-          - "pro-Biden" se mean_opinion <= 0.333
-          - "pro-Trump" se mean_opinion >= 0.666
-          - "neutral" altrimenti.
-        Mostra un plot dell'evoluzione nel tempo (settimane) del numero di community per categoria.
-        Questa funzione esegue l'analisi su un singolo run (non iterato).
-        """
-        # Costruisci il grafo evolutivo utilizzando tutti i matching
-        if self.matches_array is None:
-            raise ValueError("Eseguire prima compute_matches().")
-        G = self.community_evolution_graph(self.matches_array)
-
-        def categorize_opinion(mean_opinion):
-            if mean_opinion <= 0.333:
-                return "pro-Biden"
-            elif mean_opinion >= 0.666:
-                return "pro-Trump"
-            else:
-                return "neutral"
-
-        # Creazione di un dizionario: per ogni snapshot, associa a ciascuna comunità la propria categoria
-        snapshot_categories = defaultdict(dict)
-        for community in G.nodes():
-            snapshot_number, _ = community.split('_')
-            snapshot_number = int(snapshot_number)
-            mean_opinion = G.nodes[community]["mean_opinion"]
-            category = categorize_opinion(mean_opinion)
-            snapshot_categories[snapshot_number][community] = category
-
-        # Conta per ogni snapshot il numero di community per categoria
-        category_counts_per_snapshot = defaultdict(lambda: {"pro-Biden": 0, "neutral": 0, "pro-Trump": 0})
-        for snapshot, communities in snapshot_categories.items():
-            for _, category in communities.items():
-                category_counts_per_snapshot[snapshot][category] += 1
-
-        # Ordina le snapshot e prepara i dati per il plot
-        snapshots = sorted(category_counts_per_snapshot.keys())
-        pro_biden_counts = [category_counts_per_snapshot[s]["pro-Biden"] for s in snapshots]
-        neutral_counts = [category_counts_per_snapshot[s]["neutral"] for s in snapshots]
-        pro_trump_counts = [category_counts_per_snapshot[s]["pro-Trump"] for s in snapshots]
-        snapshot_labels = [s + 1 for s in snapshots]  # le settimane partono da 1
-
-        plt.figure(figsize=(10, 5))
-        plt.plot(snapshot_labels, pro_biden_counts, marker="o", linestyle="-", label="Pro-Biden", color="blue")
-        plt.plot(snapshot_labels, neutral_counts, marker="s", linestyle="--", label="Neutral", color="gray")
-        plt.plot(snapshot_labels, pro_trump_counts, marker="^", linestyle="-.", label="Pro-Trump", color="red")
-        plt.xlabel("Settimana")
-        plt.ylabel("Numero di Community")
-        plt.title("Evoluzione delle categorie di opinion nel tempo")
-        plt.xticks(snapshot_labels)
-        plt.legend()
-        plt.grid(True, linestyle="--", alpha=0.6)
         plt.show()
 
     def get_category_counts(self):
@@ -278,10 +226,12 @@ class CommunityEvolutionAnalysis:
         
         Separiamo il calcolo di averages e stds dal plot, restituendo tali valori
         per poterli eventualmente utilizzare anche fuori dalla classe.
+
+        Parametri:
+        - iterations (int): numero di iterazioni da eseguire.
+        - plot (bool): se True, viene mostrato il plot finale.
         
-        :param iterations: numero di iterazioni da eseguire.
-        :param plot: se True, viene mostrato il plot finale.
-        :return: snapshots (array), averages (dict), stds (dict)
+        :return: averages (dict), stds (dict)
         """
         num_snapshots = len(self.snapshot_graphs)
         # Inizializza una struttura per salvare i conteggi per ciascuna categoria e snapshot
@@ -344,5 +294,5 @@ class CommunityEvolutionAnalysis:
             plt.show()
         
         # Restituisce i valori calcolati per poterli utilizzare anche al di fuori della classe
-        return averages, stds
+        return averages, stds, results
 
